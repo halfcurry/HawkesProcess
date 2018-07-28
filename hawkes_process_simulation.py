@@ -1,7 +1,7 @@
 import numpy as np
 from random import randint
 
-class hawkes_process:
+class hawkes_process_simulation:
 
     def exponential_kernel(self, w, t):
         return w*np.exp(-w*t)
@@ -94,7 +94,7 @@ class hawkes_process:
         self.simulate_hawkes_events(0.2, 0.05, 1, self.exponential_kernel, 100, 2)
 
 if __name__ == '__main__':
-    hawkes_process().main()
+    hawkes_process_simulation().main()
 
 
 
