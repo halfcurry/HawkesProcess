@@ -55,8 +55,8 @@ class hawkes_process:
         prev_t = t
         while t < time_window:
             prev_t = t
-            user = randint(0, n_users)
-            (t,lambd) = self.generate_point(mu, w, alpha, k, t, user_points[user])
+            user = randint(0, n_users-1)
+            t,lambd = self.generate_point(mu, w, alpha, k, t, user_points[user])
             if prev_t != t:
                 user_points[user].append(t)
                 all_samples.append(t)
@@ -76,8 +76,8 @@ class hawkes_process:
         i = len(all_samples)
         while i <= N:
             prev_t = t
-            user = randint(0, n_users)
-            (t, lambd) = self.generate_point(mu, w, alpha, k, t, user_points[user])
+            user = randint(0, n_users-1)
+            t, lambd = self.generate_point(mu, w, alpha, k, t, user_points[user])
             if prev_t != t:
                 user_points[user].append(t)
                 all_samples.append(t)
@@ -85,6 +85,16 @@ class hawkes_process:
 
         print(user_points)
         print(all_samples)
+
+    def main(self):
+        print('Simulating Hawkes for 100s...')
+        self.simulate_hawkes_window(0.2, 0.05, 1, self.exponential_kernel, 100, 2)
+
+        print('Simulating Hawkes for 100 events...')
+        self.simulate_hawkes_events(0.2, 0.05, 1, self.exponential_kernel, 100, 2)
+
+if __name__ == '__main__':
+    hawkes_process().main()
 
 
 
