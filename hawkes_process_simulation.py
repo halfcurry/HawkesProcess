@@ -88,7 +88,7 @@ class hawkes_process_simulation:
 
     def main(self):
         print('Simulating Hawkes for 100s...')
-        self.simulate_hawkes_window(0.2, 0.05, 1, self.exponential_kernel, 100, 2)
+        self.simulate_hawkes_window(0.2, 0.05, 1, self.exponential_kernel, 100, 1)
 
         print('Simulating Hawkes for 100 events...')
         self.simulate_hawkes_events(0.2, 0.05, 1, self.exponential_kernel, 100, 2)
