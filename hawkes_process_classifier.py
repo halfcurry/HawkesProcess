@@ -30,7 +30,33 @@ class hawkes_process_classifier:
 
         ll = -(-mu * time_stamps[-1] + first_sum + second_sum)
 
-        return -ll
+        return ll
+
+    def gradient_mu(self, param, *triplet):
+        mu = param
+        alpha = triplet[0]
+        w = triplet[1]
+        time_stamps = triplet[2]
+
+        r = np.zeros(time_stamps.shape)
+
+        # print time_stamps.shape
+
+        for time_ctr in range(1, len(time_stamps)):
+            r[time_ctr] = np.exp(-w * (time_stamps[time_ctr] - time_stamps[time_ctr - 1])) * (1 + r[time_ctr - 1])
+
+        first_sum = np.sum(1.0/(mu + alpha * r))
+
+        # first_sum = 0
+        # for elt in r:
+        #     first_sum=first_sum+(1.0/(mu+alpha*elt))
+
+        del_mu = -time_stamps[-1] + first_sum
+
+        print(del_mu)
+
+        return -del_mu
+
 
     def estimate_params(self, time_stamps):
         mu0 = 0.1
@@ -41,7 +67,8 @@ class hawkes_process_classifier:
 
         triplet = (alpha, w, time_stamps)
 
-        res = minimize(self.neg_log_likelihood, initial_guess, args = triplet, method = 'L-BFGS-B')
+        res = minimize(self.neg_log_likelihood, initial_guess, args = triplet, method = 'BFGS', options = {'maxiter':100},
+                       jac = self.gradient_mu)
 
         return res
 
