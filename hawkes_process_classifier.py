@@ -1,6 +1,6 @@
 import numpy as np
 from random import randint
-from scipy.optimize import minimize
+from scipy.optimize import minimize, check_grad
 
 class hawkes_process_classifier:
 
@@ -53,10 +53,22 @@ class hawkes_process_classifier:
 
         del_mu = -time_stamps[-1] + first_sum
 
-        print(del_mu)
+        # print(del_mu)
 
         return -del_mu
 
+
+    def check_grad_mu(self, time_stamps):
+        w = 0.1
+        alpha = 0.1
+
+        triplet = (alpha, w, time_stamps)
+        # res = check_grad(self.neg_log_likelihood, self.gradient_mu, [], args = triplet)
+        #
+        for i in range(100):
+            mu=i/10
+
+            print("Mu: ", mu, "Grad: ", check_grad(self.neg_log_likelihood, self.gradient_mu, np.array([mu]), *triplet))
 
     def estimate_params(self, time_stamps):
         mu0 = 0.1
@@ -73,7 +85,17 @@ class hawkes_process_classifier:
         return res
 
     def main(self):
-        print(self.estimate_params(np.array([2.8914986, 8.09118015, 10.35220284, 15.72422933,
+        # print(self.estimate_params(np.array([2.8914986, 8.09118015, 10.35220284, 15.72422933,
+        #                           20.41385768, 24.76074457, 58.6856862, 59.66601112,
+        #                           86.23050124, 95.78644578, 97.79439315, 109.11365526,
+        #                           115.38968376, 115.99595348, 138.26479343, 156.01784925,
+        #                           178.28689279, 181.86195694, 193.8846334, 199.726623,
+        #                           206.28067149, 213.24882906, 225.44679125, 238.64851829,
+        #                           246.26655032, 250.73418687, 255.75212692, 273.53467842])
+        #                       )
+        #       )
+
+        self.check_grad_mu(np.array([2.8914986, 8.09118015, 10.35220284, 15.72422933,
                                   20.41385768, 24.76074457, 58.6856862, 59.66601112,
                                   86.23050124, 95.78644578, 97.79439315, 109.11365526,
                                   115.38968376, 115.99595348, 138.26479343, 156.01784925,
@@ -81,7 +103,6 @@ class hawkes_process_classifier:
                                   206.28067149, 213.24882906, 225.44679125, 238.64851829,
                                   246.26655032, 250.73418687, 255.75212692, 273.53467842])
                               )
-              )
 
     def fit(self):
         pass
