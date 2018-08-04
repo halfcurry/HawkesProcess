@@ -3,13 +3,14 @@ from random import randint
 
 class hawkes_process_simulation:
 
-    def exponential_kernel(self, w, t):
-        return w*np.exp(-w*t)
+    def exponential_kernel(self, beta, t):
+        return beta*np.exp(-beta*t)
 
-    def hawkes_intensity(self, mu, w, alpha, k, t, points):
+    def hawkes_intensity(self, mu, beta, alpha, k, t, points):
         # mu is the constant base intensity of a particular generating label (y)
-        # w is omega, the decay of the kernel function
-        # alpha is a matrix of size |Y|×|Y| which encodes the degrees of influence between pairs of labels assigned to the tweets
+        # beta is the decay of the kernel function
+        # alpha is adjacency matrix (can be scalar too)
+        # neta? is a matrix of size |Y|×|Y| which encodes the degrees of influence between pairs of labels assigned to the tweets
         # TODO: Use alpha or not?
         # k is a kernel function, using exponential kernel for now
         # t is the considered time
@@ -17,21 +18,21 @@ class hawkes_process_simulation:
         p = []
         for t_i in points:
             if t_i < t:
-                # p.append(self.exponential_kernel(w,t-t_i))
-                p.append(k(w, t - t_i))
-        return mu + sum(p)
+                # p.append(self.exponential_kernel(beta,t-t_i))
+                p.append(k(beta, t - t_i))
+        return mu + alpha * sum(p)
 
-    def generate_point(self, mu, w, alpha, k, t, points):
+    def generate_point(self, mu, beta, alpha, k, t, points):
         # generates a point according to hawkes intensity, i.e does simulation of a single point by thinning
 
         # intensity value at current t : set upper bound of poisson intensity
-        lambd = self.hawkes_intensity(mu, w, alpha, k, t, points)
+        lambd = self.hawkes_intensity(mu, beta, alpha, k, t, points)
 
         # generate time lag from homogeneous exp distribution with this intensity
         s = np.random.exponential(scale = 1/lambd)
 
         #intensity with new t = t+s
-        lambd_new = self.hawkes_intensity(mu, w, alpha, k, t + s, points)
+        lambd_new = self.hawkes_intensity(mu, beta, alpha, k, t + s, points)
 
         ratio = lambd_new/lambd
 
@@ -43,7 +44,7 @@ class hawkes_process_simulation:
         return (t,lambd)
 
 
-    def simulate_hawkes_window(self, mu, w, alpha, k, time_window, n_users):
+    def simulate_hawkes_window(self, mu, beta, alpha, k, time_window, n_users):
         # thinning algorithm
         # suppose we need to simulate any number of events in (0-time_window) for n_users
         t = 0
@@ -56,7 +57,7 @@ class hawkes_process_simulation:
         while t < time_window:
             prev_t = t
             user = randint(0, n_users-1)
-            t,lambd = self.generate_point(mu, w, alpha, k, t, user_points[user])
+            t,lambd = self.generate_point(mu, beta, alpha, k, t, user_points[user])
             if prev_t != t:
                 user_points[user].append(t)
                 all_samples.append(t)
@@ -64,7 +65,7 @@ class hawkes_process_simulation:
         print(user_points)
         print(all_samples)
 
-    def simulate_hawkes_events(self, mu, w, alpha, k, N, n_users):
+    def simulate_hawkes_events(self, mu, beta, alpha, k, N, n_users):
         #suppose we need to simulate N events in total distributed among n_users
         t = 0
         user_points = {}
@@ -77,7 +78,7 @@ class hawkes_process_simulation:
         while i <= N:
             prev_t = t
             user = randint(0, n_users-1)
-            t, lambd = self.generate_point(mu, w, alpha, k, t, user_points[user])
+            t, lambd = self.generate_point(mu, beta, alpha, k, t, user_points[user])
             if prev_t != t:
                 user_points[user].append(t)
                 all_samples.append(t)
@@ -87,11 +88,11 @@ class hawkes_process_simulation:
         print(all_samples)
 
     def main(self):
-        print('Simulating Hawkes for 100s...')
-        self.simulate_hawkes_window(0.2, 0.05, 1, self.exponential_kernel, 100, 1)
+        # print('Simulating Hawkes for 100s...')
+        # self.simulate_hawkes_window(0.2, 0.05, 1, self.exponential_kernel, 100, 1)
 
-        print('Simulating Hawkes for 100 events...')
-        self.simulate_hawkes_events(0.2, 0.05, 1, self.exponential_kernel, 100, 2)
+        print('Simulating Hawkes for 1000 events...')
+        self.simulate_hawkes_events(0.1, 0.01, 0.1, self.exponential_kernel, 1000, 1)
 
 if __name__ == '__main__':
     hawkes_process_simulation().main()

@@ -1,6 +1,7 @@
 import numpy as np
 from random import randint
 from scipy.optimize import minimize, check_grad
+import ast
 
 class hawkes_process_classifier:
 
@@ -55,7 +56,8 @@ class hawkes_process_classifier:
 
     def gradient_mu(self, param, *args):
 
-        mu = np.exp(param)
+        # mu = np.exp(param)
+        mu = param
 
         alpha = args[1]
         beta = args[2]
@@ -74,15 +76,26 @@ class hawkes_process_classifier:
         for elt in r:
             first_sum=first_sum+(1.0/max(1e-10,(mu+alpha*elt)))
 
-        del_mu = (-time_stamps[-1] + first_sum)*np.exp(param)
-
-        print("Negative of gradient_mu: ", -del_mu)
+        del_mu = (-time_stamps[-1] + first_sum)
 
         return -del_mu
 
+    def grad_mu(self, param, *args):
+
+        mu = np.exp(param)
+
+        gr_mu = self.gradient_mu(mu, *args)
+        gr_mu = gr_mu * mu
+
+        print("Negative of gradient_mu: ", gr_mu)
+
+        return gr_mu
+
     def gradient_alpha(self, param, *args):
 
-        alpha = np.exp(param)
+        # alpha = np.exp(param)
+        alpha = param
+
         mu = args[1]
         beta = args[2]
         time_stamps = args[3]
@@ -102,10 +115,21 @@ class hawkes_process_classifier:
         for elt in r:
             second_sum = second_sum + ( elt/ max(1e-10,(mu + alpha * elt)) )
 
-        del_alpha = (second_sum + ((1.0/beta) * first_sum))*np.exp(param)
+        del_alpha = (second_sum + ((1.0/beta) * first_sum))
 
-        print("Negative of gradient_alpha: ", -del_alpha)
+
         return -del_alpha
+
+    def grad_alpha(self, param, *args):
+
+        alpha = np.exp(param)
+
+        gr_alpha = self.gradient_alpha(alpha, *args)
+        gr_alpha = gr_alpha * alpha
+
+        print("Negative of gradient_alpha: ", gr_alpha)
+
+        return gr_alpha
 
     def gradient_beta(self, param, *args):
 
@@ -114,11 +138,10 @@ class hawkes_process_classifier:
         alpha = args[2]
         time_stamps = args[3]
 
-        time_diff = time_stamps[-1] - time_stamps
-        time_exp = np.exp(-beta * time_diff) - 1
+        # time_diff = time_stamps[-1] - time_stamps
+        # time_exp = np.exp(-beta * time_diff) - 1
 
         a = np.zeros(time_stamps.shape)
-
         b = np.zeros(time_stamps.shape)
 
         for time_ctr in range(1, len(time_stamps)):
@@ -159,6 +182,7 @@ class hawkes_process_classifier:
             print("Mu: ", mu, "Err: ", check_grad(self.neg_log_likelihood, self.gradient_mu, np.array([mu]), *args))
 
     def estimate_params(self, time_stamps):
+        # mu0 = np.log(0.1)
         mu0 = np.log(0.1)
         beta = 0.01
         alpha = 0.1
@@ -168,9 +192,10 @@ class hawkes_process_classifier:
         args = ('mu', alpha, beta, time_stamps)
 
         print("Estimating mu...")
-        res1 = minimize(self.neg_log_likelihood, initial_guess, args = args, method = 'BFGS', options = {'maxiter':100},
-                       jac = self.gradient_mu)
+        res1 = minimize(self.neg_log_likelihood, initial_guess, args = args, method = 'BFGS', options = {'disp':True, 'maxiter':100},
+                       jac = self.grad_mu)
 
+        # alpha0 = np.log(0.1)
         alpha0 = np.log(0.1)
         beta = 0.01
         mu = 0.1
@@ -180,45 +205,35 @@ class hawkes_process_classifier:
         args = ('alpha', mu, beta, time_stamps)
 
         print("Estimating alpha...")
-        res2 = minimize(self.neg_log_likelihood, initial_guess, args = args, method = 'BFGS', options = {'maxiter':100},
-                       jac = self.gradient_alpha)
+        res2 = minimize(self.neg_log_likelihood, initial_guess, args = args, method = 'BFGS', options = {'disp':True,'maxiter':100},
+                       jac = self.grad_alpha)
 
         alpha = 0.1
-        beta0 = np.log(10)
+        beta0 = np.log(0.01)
         mu = 0.1
 
         initial_guess = beta0
 
-        args = ('beta', mu, alpha, time_stamps)
-
-        print("Estimating beta...")
-        res3 = minimize(self.neg_log_likelihood, initial_guess, args=args, method='L-BFGS-B', options={'maxiter': 100},
-                        jac=self.gradient_beta)
+        # args = ('beta', mu, alpha, time_stamps)
+        #
+        # print("Estimating beta...")
+        res3 = []
+        # res3 = minimize(self.neg_log_likelihood, initial_guess, args=args, method='L-BFGS-B', options={'maxiter': 10},
+        #                 jac=self.gradient_beta)
 
         return res1, res2, res3
 
     def main(self):
 
-        test_timestamps = np.array([2.8914986, 8.09118015, 10.35220284, 15.72422933,
-                                  20.41385768, 24.76074457, 58.6856862, 59.66601112,
-                                  86.23050124, 95.78644578, 97.79439315, 109.11365526,
-                                  115.38968376, 115.99595348, 138.26479343, 156.01784925,
-                                  178.28689279, 181.86195694, 193.8846334, 199.726623,
-                                  206.28067149, 213.24882906, 225.44679125, 238.64851829,
-                                  246.26655032, 250.73418687, 255.75212692, 273.53467842])
+
+        with open('sample_timestamps.txt', 'r') as f:
+            test_timestamps = ast.literal_eval(f.read())
+
+        test_timestamps = np.array(test_timestamps)
 
         res1, res2, res3 = self.estimate_params(test_timestamps)
 
         print(res1)
-
-        # self.check_grad_mu(np.array([2.8914986, 8.09118015, 10.35220284, 15.72422933,
-        #                           20.41385768, 24.76074457, 58.6856862, 59.66601112,
-        #                           86.23050124, 95.78644578, 97.79439315, 109.11365526,
-        #                           115.38968376, 115.99595348, 138.26479343, 156.01784925,
-        #                           178.28689279, 181.86195694, 193.8846334, 199.726623,
-        #                           206.28067149, 213.24882906, 225.44679125, 238.64851829,
-        #                           246.26655032, 250.73418687, 255.75212692, 273.53467842])
-        #                       )
 
         print("\n\n", res2)
 
@@ -226,7 +241,7 @@ class hawkes_process_classifier:
 
         print("\n\nEstimated mu: ", np.exp(res1.x))
         print("Estimated alpha: ", np.exp(res2.x))
-        print("Estimated beta: ", np.exp(res3.x))
+        # print("Estimated beta: ", np.exp(res3.x))
 
 
     def fit(self):
