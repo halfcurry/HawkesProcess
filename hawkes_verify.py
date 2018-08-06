@@ -11,14 +11,14 @@ class hawkes_verify:
 
     def simulate(self):
         n_nodes = 1
-        baseline = [0.1]
-        adjacency = [[0.9]]
+        baseline = [0.2]
+        adjacency = [[0.5]]
         decays = 0.01
         end_time = 10000
         # max_jumps=1000;
 
         a_sim = SimuHawkesExpKernels(adjacency, decays, baseline=baseline, end_time=end_time, verbose=True)
-        a_sim.track_intensity(0.1)
+        a_sim.track_intensity(0.01)
 
         a_sim.simulate()
         # print(a_sim.timestamps)
@@ -55,7 +55,12 @@ class hawkes_verify:
         timestamps_list = []
         timestamps_list.append(timestamps)
 
-        z = a_kernel.fit(timestamps_list)
+        a_kernel.fit(timestamps_list)
+
+        print("No of users: ", a_kernel.n_nodes)
+        print("Estimated mu: ", a_kernel.baseline)
+        print("Estimated alpha:", a_kernel.adjacency)
+        print("Estimated coeffs: ", a_kernel.coeffs)
 
         likelihood = a_kernel.score(timestamps_list)
 
