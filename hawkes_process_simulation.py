@@ -62,8 +62,7 @@ class hawkes_process_simulation:
                 user_points[user].append(t)
                 all_samples.append(t)
 
-        print(user_points)
-        print(all_samples)
+        return user_points, all_samples
 
     def simulate_hawkes_events(self, mu, beta, alpha, k, N, n_users):
         #suppose we need to simulate N events in total distributed among n_users
@@ -84,15 +83,17 @@ class hawkes_process_simulation:
                 all_samples.append(t)
             i = len(all_samples)
 
-        print(user_points)
-        print(all_samples)
+        return user_points, all_samples
 
     def main(self):
-        # print('Simulating Hawkes for 100s...')
-        # self.simulate_hawkes_window(0.2, 0.05, 1, self.exponential_kernel, 100, 1)
+        print('Simulating Hawkes for 300s...')
+        user_points, all_samples = self.simulate_hawkes_window(0.5, 0.01, 0.9, self.exponential_kernel, 300, 1)
 
-        print('Simulating Hawkes for 1000 events...')
-        self.simulate_hawkes_events(0.1, 0.01, 0.1, self.exponential_kernel, 1000, 1)
+        with open('sample_timestamps.txt', 'w') as f:
+            f.write(str(all_samples))
+
+        # print('Simulating Hawkes for 1000 events...')
+        # self.simulate_hawkes_events(0.1, 0.01, 0.1, self.exponential_kernel, 1000, 1)
 
 if __name__ == '__main__':
     hawkes_process_simulation().main()

@@ -7,16 +7,17 @@ import ast
 np.set_printoptions(suppress=True)
 np.set_printoptions(threshold=np.nan)
 
+decays = 0.01
+
 class hawkes_verify:
 
     def simulate(self):
         n_nodes = 1
-        baseline = [0.2]
-        adjacency = [[0.5]]
-        decays = 0.01
+        baseline = [0.1]
+        adjacency = [[0.1]]
+
         end_time = 10000
         # max_jumps=1000;
-
         a_sim = SimuHawkesExpKernels(adjacency, decays, baseline=baseline, end_time=end_time, verbose=True)
         a_sim.track_intensity(0.01)
 
@@ -30,7 +31,6 @@ class hawkes_verify:
             f.write(str(list(a_sim.timestamps[0])))
 
     def learn(self, timestamps):
-        decays = 0.01
         gofit = 'least-squares'
         penalty = 'l2'
         C = 1e3

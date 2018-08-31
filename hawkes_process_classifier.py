@@ -3,6 +3,12 @@ from random import randint
 from scipy.optimize import minimize, check_grad
 import ast, math
 
+
+np.set_printoptions(suppress=True)
+np.set_printoptions(threshold=np.nan)
+
+omega = 1000
+
 class hawkes_process_classifier:
 
     def neg_log_likelihood(self, param, *args):
@@ -53,14 +59,28 @@ class hawkes_process_classifier:
 
         temp = np.sum(np.log(mu + alpha * R))
 
-        temp1 = (alpha/beta) * np.sum(np.exp(-beta*(time_stamps[-1]-time_stamps)) -1)
+        temp1 = (alpha * 1.0 / max(1e-10, beta)) * np.sum(np.exp(-beta*(time_stamps[-1]-time_stamps)) -1)
 
         ll = (-mu * time_stamps[-1]) + temp + temp1
 
         # print("Negative likelihood: ", -ll)
 
-        return -ll
+        return -ll + omega * self.regularization_l2(mu, alpha, beta)
 
+
+    def regularization_l2(self, mu, alpha, beta):
+
+        return math.pow(mu, 2) + math.pow(alpha, 2) + math.pow(beta, 2)
+
+    def neg_log_likelihood_wrapper(self, param, *args):
+
+        p = np.exp(param)
+
+        ll = self.neg_log_likelihood(p, *args)
+
+        print('Negative Likelihood :', ll)
+
+        return ll
 
     def gradient_mu(self, param, *args):
 
@@ -94,7 +114,7 @@ class hawkes_process_classifier:
         temp = (mu + alpha * A)
         del_mu = (-time_stamps[-1] + np.sum(1.0 / temp))
 
-        return -del_mu
+        return -del_mu + 2*omega*mu
 
     def grad_mu(self, param, *args):
 
@@ -142,7 +162,7 @@ class hawkes_process_classifier:
 
         del_alpha = np.sum(A / temp) + math.pow(beta, -1) * np.sum(np.exp(-beta * (time_stamps[-1] - time_stamps)) - 1)
 
-        return -del_alpha
+        return -del_alpha + 2*omega*math.pow(alpha,1)
 
     def grad_alpha(self, param, *args):
 
@@ -212,7 +232,7 @@ class hawkes_process_classifier:
 
         del_beta = -np.sum(alpha * (first_term + second_term)) - np.sum(temp2)
 
-        return -del_beta
+        return -del_beta + 2*omega*beta
 
     def grad_beta(self, param, *args):
 
@@ -266,6 +286,18 @@ class hawkes_process_classifier:
 
         return np.array([-del_mu, -del_alpha, -del_beta])
 
+    def grad_combined(self, param, *args):
+
+        p = np.exp(param)
+        grad = np.zeros(len(p))
+
+        gr = self.gradient_combined(p, *args)
+        for i in range(len(gr)):
+            grad[i] = gr[i] * p[i]
+
+        print("Negative of gradients: ", grad)
+
+        return grad
 
     def check_grad_mu(self, time_stamps):
         beta = 0.01
@@ -298,72 +330,97 @@ class hawkes_process_classifier:
 
         ###################################################
 
-        # mu0 = 0.1
-        # beta0 = 0.01
-        # alpha0 = 0.1
+        mu0 = 0.1
+        beta0 = 0.1
+        alpha0 = 0.1
+
+        x = [mu0]
+
+        args = ('mu', alpha0, beta0, time_stamps)
+
+        n_ll = lambda x: self.neg_log_likelihood(x, *args)
+        n_grad = lambda x: self.gradient_mu(x, *args)
+
+        cons = ({'type': 'ineq', 'fun': lambda x: np.array([x[0] - 1e-5])})
+
+        print("Estimating mu...")
+        res1 = minimize(
+                        self.neg_log_likelihood_wrapper,
+                        # n_ll,
+                        x,
+                        args=args,
+                        # method='SLSQP',
+                        method = 'BFGS',
+                        # bounds=((1e-5, None)),
+                        # constraints=cons,
+                        options={'disp': False, 'maxiter': 200},
+                        jac = self.grad_mu
+                        )
         #
-        # x = [mu0]
-        #
-        # args = ('mu', alpha0, beta0, time_stamps)
-        #
-        # n_ll = lambda x: self.neg_log_likelihood(x, *args)
-        # n_grad = lambda x: self.gradient_mu(x, *args)
-        #
-        # cons = ({'type': 'ineq', 'fun': lambda x: np.array([x[0] - 1e-5])})
-        #
-        # print("Estimating mu...")
-        # res1 = minimize(n_ll, x, args=args,
-        #                 method='SLSQP',
-        #                 bounds=((1e-5, None)),
-        #                 constraints=cons,
-        #                 options={'disp': False, 'maxiter': 200},
-        #                 # jac=n_grad
-        #                 )
-        #
-        #
-        # ##########################################################
-        #
-        # alpha0 = 0.1
-        # beta0 = 0.01
-        # mu0 = 0.1
-        #
-        # x = [alpha0]
-        #
-        # args = ('alpha', mu0, beta0, time_stamps)
-        #
-        # n_ll = lambda x: self.neg_log_likelihood(x, *args)
-        # n_grad = lambda x: self.gradient_alpha(x, *args)
-        #
-        # cons = ({'type': 'ineq', 'fun': lambda x: np.array([beta0 - alpha0 - 1e-5])})
-        #
-        # print("Estimating alpha...")
-        # res2 = minimize(n_ll, x, args=args, method='SLSQP', bounds=((1e-5, None)), constraints=cons, options={'disp': False, 'maxiter': 500},)
-        #                 # jac=n_grad)
         #
         # ##########################################################
         #
-        # mu0 = 0.1
-        # alpha0 = 0.1
-        # beta0 = 0.01
+        alpha0 = 0.1
+        beta0 = 0.1
+        mu0 = 0.1
+
+        x = [alpha0]
+
+        args = ('alpha', mu0, beta0, time_stamps)
+
+        n_ll = lambda x: self.neg_log_likelihood(x, *args)
+        n_grad = lambda x: self.gradient_alpha(x, *args)
+
+        cons = ({'type': 'ineq', 'fun': lambda x: np.array([beta0 - alpha0 - 1e-5])})
+
+        print("Estimating alpha...")
+        res2 = minimize(
+                        self.neg_log_likelihood_wrapper,
+                        # n_ll,
+                        x,
+                        args=args,
+                        # method='SLSQP',
+                        method = 'BFGS',
+                        # bounds=((1e-5, None)),
+                        # constraints=cons,
+                        options={'disp': False, 'maxiter': 200},
+                        jac=self.grad_alpha
+                    )
         #
-        # x =  [beta0]
-        #
-        # args = ('beta', mu0, alpha0, time_stamps)
-        #
-        # n_ll = lambda x: self.neg_log_likelihood(x, *args)
-        # n_grad = lambda x: self.gradient_beta(x, *args)
-        #
-        # cons = ({'type': 'ineq', 'fun': lambda x: np.array([beta0 - alpha0 - 1e-5])})
-        #
-        # print("Estimating beta...")
-        #
-        # res3 = minimize(n_ll, x, args=args, method='SLSQP', bounds=((1e-5, None)), constraints=cons, options={'disp': False, 'maxiter': 500},)
-        #                 # jac=n_grad)
+        # ##########################################################
+
+        mu0 = 0.1
+        alpha0 = 0.1
+        beta0 = 0.01
+
+        x =  [beta0]
+
+        args = ('beta', mu0, alpha0, time_stamps)
+
+        n_ll = lambda x: self.neg_log_likelihood(x, *args)
+        n_grad = lambda x: self.gradient_beta(x, *args)
+
+        cons = ({'type': 'ineq', 'fun': lambda x: np.array([beta0 - alpha0 - 1e-5])})
+
+        print("Estimating beta...")
+
+        res3 = minimize(
+                        # n_ll,
+                        self.neg_log_likelihood_wrapper,
+                        x,
+                        args=args,
+                        # method='SLSQP',
+                        method='BFGS',
+                        # bounds=((1e-5, None)),
+                        # constraints=cons,
+                        options={'disp': False, 'maxiter': 200},
+                        jac= self.grad_beta
+                        )
 
         #########################################################
 
         mu0 = 0.1
-        alpha0 = 0.5
+        alpha0 = 0.1
         beta0 = 0.01
 
         x = [mu0, alpha0, beta0]
@@ -377,9 +434,26 @@ class hawkes_process_classifier:
 
         print("Estimating params...")
 
-        res4 = minimize(n_ll, x, method='SLSQP', bounds=((1e-5, None), (1e-5, None), (1e-5, None)), constraints=cons, options={'disp': False, 'maxiter': 200},
-                        jac = n_grad
-                        )
+        # res4 = minimize(self.neg_log_likelihood_wrapper,
+        #                 x,
+        #                 method='BFGS',
+        #                 args = args,
+        #                 options={'disp': False, 'maxiter': 200},
+        #                 jac = self.grad_combined
+        #                 )
+
+
+        # res4 = minimize(
+        #                 n_ll,
+        #                 x,
+        #                 method='SLSQP',
+        #                 # args=args,
+        #                 bounds=((1e-5, None), (1e-5, None), (1e-5, None)),
+        #                 constraints=cons,
+        #                 options={'disp': False, 'maxiter': 200},
+        #                 jac = n_grad
+        #                 )
+
 
         return res1, res2, res3, res4
 
@@ -404,10 +478,18 @@ class hawkes_process_classifier:
 
         print("\n\n", res4)
 
-        # print("\n\nEstimated mu: ", res1.x)
-        # print("Estimated alpha: ", res2.x)
-        # print("Estimated beta: ", res3.x)
-        print("Estimated all: ", res4.x)
+        print("\n\nEstimated mu: ", res1.x)
+        print("Estimated alpha: ", res2.x)
+        print("Estimated beta: ", res3.x)
+        # print("Estimated all: ", res4.x)
+
+        print("\n\nEstimated mu: ", np.exp(res1.x))
+        print("Estimated alpha: ", np.exp(res2.x))
+        print("Estimated beta: ", np.exp(res3.x))
+        # print("Estimated all: ", np.exp(res4.x))
+
+        # print("Estimated all: ", res4.x)
+
 
 
     def fit(self):
